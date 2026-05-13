@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Форма обратной связи</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(160deg, #0f1419 0%, #1a2332 45%, #121820 100%);
+      color: #e8ecf1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: #1e2736;
+      border: 1px solid #2d3a4d;
+      border-radius: 12px;
+      padding: 1.75rem 1.75rem 1.5rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    h1 {
+      margin: 0 0 1.25rem;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: #f0f4f8;
+      letter-spacing: 0.02em;
+    }
+    .field {
+      margin-bottom: 1rem;
+    }
+    .field label {
+      display: block;
+      font-size: 0.875rem;
+      color: #a8b5c4;
+      margin-bottom: 0.4rem;
+    }
+    .field input[type="text"],
+    .field input[type="email"],
+    .field textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      font-size: 1rem;
+      border: 1px solid #3d4f66;
+      border-radius: 8px;
+      background: #141c28;
+      color: #e8ecf1;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus,
+    .field textarea:focus {
+      border-color: #5b8def;
+      box-shadow: 0 0 0 2px rgba(91, 141, 239, 0.2);
+    }
+    .field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+    .field .error {
+      display: block;
+      min-height: 1.25rem;
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: #f08080;
+    }
+    .checkbox-field {
+      margin: 1rem 0 1.25rem;
+    }
+    .checkbox-field label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #c5d0dc;
+    }
+    .checkbox-field input {
+      margin-top: 0.2rem;
+      width: 1rem;
+      height: 1rem;
+      accent-color: #5b8def;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1rem;
+    }
+    .actions button {
+      padding: 0.6rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f1419;
+      background: linear-gradient(180deg, #7eb3ff 0%, #5b8def 100%);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .actions button:hover {
+      filter: brightness(1.08);
+    }
+    .actions button:active {
+      transform: translateY(1px);
+    }
+    #statusOk {
+      font-size: 0.9rem;
+      color: #7dcea0;
+      font-weight: 500;
+      min-height: 1.25rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #statusOk.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Обратная связь</h1>
+    <form id="feedbackForm" novalidate>
+      <div class="field">
+        <label for="userName">Имя</label>
+        <input type="text" id="userName" name="userName" autocomplete="name">
+        <span class="error" id="errName" aria-live="polite"></span>
+      </div>
+      <div class="field">
+        <label for="userEmail">Email</label>
+        <input type="text" id="userEmail" name="userEmail" autocomplete="email">
+        <span class="error" id="errEmail" aria-live="polite"></span>
+      </div>
+      <div class="field">
+        <label for="userMessage">Сообщение</label>
+        <textarea id="userMessage" name="userMessage" rows="4"></textarea>
+        <span class="error" id="errMessage" aria-live="polite"></span>
+      </div>
+      <div class="checkbox-field field">
+        <label>
+          <input type="checkbox" id="consent" name="consent">
+          <span>Согласен на обработку данных</span>
+        </label>
+        <span class="error" id="errConsent" aria-live="polite"></span>
+      </div>
+      <div class="actions">
+        <button type="submit">Отправить</button>
+        <span id="statusOk" role="status">Сообщение отправлено</span>
+      </div>
+    </form>
+  </div>
+  <script>
+    (function () {
+      var form = document.getElementById('feedbackForm');
+      var nameInput = document.getElementById('userName');
+      var emailInput = document.getElementById('userEmail');
+      var messageInput = document.getElementById('userMessage');
+      var consentInput = document.getElementById('consent');
+      var errName = document.getElementById('errName');
+      var errEmail = document.getElementById('errEmail');
+      var errMessage = document.getElementById('errMessage');
+      var errConsent = document.getElementById('errConsent');
+      var statusOk = document.getElementById('statusOk');
+
+      /** Имя: только буквы (в т.ч. кириллица) и цифры, хотя бы одна буква */
+      function isValidName(s) {
+        if (!s) return false;
+        var hasLetter = /[\u0400-\u04FFa-zA-Z]/.test(s);
+        if (!hasLetter) return false;
+        return /^[\u0400-\u04FFa-zA-Z0-9]+$/.test(s);
+      }
+
+      /**
+       * Email: до @ — буквы или буквы и цифры;
+       * между @ и точкой — только буквы;
+       * после последней точки — только буквы;
+       * есть @ и точка после @.
+       */
+      function isValidEmail(s) {
+        if (!s) return false;
+        var m = s.match(/^([a-zA-Z0-9]+)@([a-zA-Z]+)\.([a-zA-Z]+)$/);
+        if (!m) return false;
+        var local = m[1];
+        var domain = m[2];
+        var tld = m[3];
+        if (!local.length || !domain.length || !tld.length) return false;
+        if (!/[a-zA-Z]/.test(local)) return false;
+        return true;
+      }
+
+      function clearErrors() {
+        errName.textContent = '';
+        errEmail.textContent = '';
+        errMessage.textContent = '';
+        errConsent.textContent = '';
+      }
+
+      function hideSuccess() {
+        statusOk.classList.remove('visible');
+      }
+
+      form.addEventListener('input', hideSuccess);
+      form.addEventListener('change', hideSuccess);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideSuccess();
+        clearErrors();
+
+        var name = nameInput.value.trim();
+        var email = emailInput.value.trim();
+        var message = messageInput.value;
+        var consent = consentInput.checked;
+        var ok = true;
+
+        if (!name) {
+          errName.textContent = 'Укажите имя.';
+          ok = false;
+        } else if (!isValidName(name)) {
+          errName.textContent = 'Имя: только буквы или буквы и цифры.';
+          ok = false;
+        }
+
+        if (!email) {
+          errEmail.textContent = 'Укажите email.';
+          ok = false;
+        } else if (!isValidEmail(email)) {
+          errEmail.textContent = 'Некорректный email. Пример: test1@abcd.xyz';
+          ok = false;
+        }
+
+        if (!message.trim()) {
+          errMessage.textContent = 'Введите сообщение.';
+          ok = false;
+        } else if (message.trim().length < 10) {
+          errMessage.textContent = 'Сообщение не короче 10 символов.';
+          ok = false;
+        }
+
+        if (!consent) {
+          errConsent.textContent = 'Нужно согласие на обработку данных.';
+          ok = false;
+        }
+
+        if (!ok) return;
+
+        form.reset();
+        clearErrors();
+        setTimeout(function () {
+          statusOk.classList.add('visible');
+        }, 0);
+      });
+    })();
+  </script>
+</body>
+</html>
